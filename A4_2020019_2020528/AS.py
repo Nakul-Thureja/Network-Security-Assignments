@@ -2,12 +2,12 @@ import rsa
 import time
 import socket
 import json
+import PKDC
 from datetime import datetime
 from cryptography.fernet import Fernet
-
-public_key, private_key = (260119,225911), (260119,109783)
+my_private_key = (138953, 92371)
 rsa = rsa.RSA()
-public_key_tgs, private_key_tgs = (788131, 720581), (788131,62637)
+public_key_tgs = PKDC.Public_Keys["TGS"]
 
 def server_program():
     # get the hostname
@@ -29,19 +29,16 @@ def server_program():
         if not data:
             # if data is not received break
             break
-        print("from connected user: " + str(data))
-        key = Fernet.generate_key().decode()
-        print(key)
-        Ticket = {"Shared Key": key,"ID1": "Client","AD1": "Client","ID2": "TGS","Time":time.time(),"Lifetime":5}
-        print(json.dumps(Ticket))
-        print(rsa.encrypt(json.dumps(Ticket),public_key_tgs).decode())
-        data = {"Shared Key": key,"ID2": "TGS","Time":time.time(),"Lifetime":5,"Ticket":rsa.encrypt(json.dumps(Ticket),public_key_tgs).decode()}
-        encrypted_data = rsa.encrypt(json.dumps(data),public_key)
-        print(len(encrypted_data))
-        decrypted_data = rsa.decrypt(encrypted_data,private_key)
-        decrypted_data = json.loads(decrypted_data)
-        enc_ticket = decrypted_data["Ticket"].encode()
-        ticket = rsa.decrypt(enc_ticket,private_key_tgs)
+        data = json.loads(data)
+        print("Data Recieved from Client:\n",data)
+        if(data["ID1"]=="Client" and data["ID2"]=="TGS"):
+            print("Client Verified")
+        
+        key_c_tgs = Fernet.generate_key().decode()
+        print("Shared Key generated b/w Client and TGS",key_c_tgs)
+        Ticket = {"Shared Key": key_c_tgs,"ID1": "Client","AD1": "Client","ID2": "TGS","Time":time.time(),"Lifetime":5}
+        data = {"Shared Key": key_c_tgs,"ID2": "TGS","Time":time.time(),"Lifetime":5,"Ticket":rsa.encrypt(json.dumps(Ticket),public_key_tgs).decode()}
+        encrypted_data = rsa.encrypt(json.dumps(data),my_private_key)
         conn.send(encrypted_data)  # send data to the client
 
     conn.close()  # close the connection

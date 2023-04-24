@@ -4,10 +4,10 @@ import socket
 import json
 from datetime import datetime
 from cryptography.fernet import Fernet
+import PKDC
 
-public_key, private_key = (260119,225911), (260119,109783)
-public_key_tgs, private_key_tgs = (788131, 720581), (788131,62637)
-public_key_server, private_key_server = (82993, 14849), (82993, 65857)
+my_private_key = (68681, 51241)
+public_key_server = PKDC.Public_Keys["Server"]
 
 rsa = rsa.RSA()
 
@@ -31,19 +31,18 @@ def server_program():
         if not data:
             # if data is not received break
             break
-        print("from connected user: " + str(data))
         data = json.loads(data)
+        print("Data Recieved from Client:\n",data)
         enc_ticket = data["Ticket"].encode()
-        ticket = rsa.decrypt(enc_ticket,private_key_tgs)
+        ticket = rsa.decrypt(enc_ticket,my_private_key)
         ticket = json.loads(ticket)
         
         if(time.time()-ticket["Time"]>ticket["Lifetime"]):
             print("Ticket Expired!!!!!!!!!!")
             exit()
+        else: 
+            print("Ticket Valid!!!!!!!!!!")
 
-        print(ticket)
-        print(data)
-        
         key_c_tgs = ticket["Shared Key"]
         fernet = Fernet(key_c_tgs.encode())
         encAuthenticator = data["Authenticator"].encode()
@@ -57,21 +56,10 @@ def server_program():
             print("Client Unverified!!!!!!\nExiting Conversation")
 
         key_c_s = Fernet.generate_key().decode()
-        print(key_c_s)
+        print("Shared Key generated b/w Client and Server",key_c_s)
         Ticket = {"Shared Key": key_c_s,"ID1": "Client","AD1": "Client","ID2":"Server","Time":time.time(),"Lifetime":5}
-        # print(json.dumps(Ticket))
-        # print(rsa.encrypt(json.dumps(Ticket),public_key_tgs).decode())
         message = {"Shared Key": key_c_s,"ID2": "Server","Time":time.time(),"Ticket":rsa.encrypt(json.dumps(Ticket),public_key_server).decode()}
-        # print(message)
         message = fernet.encrypt(json.dumps(message).encode())
-        print("Size",message)
-        decMessage = fernet.decrypt(message).decode()
-        print(decMessage)
-        # print(len(encrypted_data))
-        # decrypted_data = rsa.decrypt(encrypted_data,private_key)
-        # decrypted_data = json.loads(decrypted_data)
-        # enc_ticket = decrypted_data["Ticket"].encode()
-        # ticket = rsa.decrypt(enc_ticket,private_key_tgs)
         conn.send(message)  # send data to the client
 
     conn.close()  # close the connection
