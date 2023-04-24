@@ -139,14 +139,15 @@ def certificate_authority():
         data = data.decode()
         data = json.loads(data)
         # print("DATABASE: ", DATABASE.records[data["Rollno"]]," ",data["dob"])
-        if(DATABASE.records[int(data["Rollno"])] == data["dob"]):
-            print("Verified VIA DOB Database")
-        else:
+        try: 
+            if(DATABASE.records[int(data["Rollno"])] == data["dob"]):
+                print("Verified VIA DOB Database")
+            else:
+                print("Unverified VIA DOB Database")
+                exit(0)
+        except:
             print("Unverified VIA DOB Database")
             exit(0)
-        # except:
-        #     print("Unverified VIA DOB Database")
-        #     exit(0)
         # ticket = json.loads(ticket)
         
         if(time.time()-data["Time"]>data["Lifetime"]):
