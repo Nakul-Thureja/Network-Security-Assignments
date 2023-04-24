@@ -2,6 +2,7 @@ import rsa
 import time
 import socket
 import json
+import hashlib
 from datetime import datetime
 from cryptography.fernet import Fernet
 import PKDC
@@ -11,6 +12,7 @@ rsa = rsa.RSA()
 tickets = {}
 shared_keys = {}
 public_key_as = PKDC.Public_Keys["AS"]
+public_key_server = PKDC.Public_Keys["Server"]
 
 
 def send_message_AS():
@@ -94,8 +96,20 @@ def certificate_request():
     
     decrypted_data = fernet.decrypt(encrypted_data.encode()).decode()
     decrypted_data = json.loads(decrypted_data)
-    print(decrypted_data)
-    #check if certificate digital signature is valid
+    hashed = hashlib.sha256(decrypted_data["data"].encode("latin-1")).digest()
+    received_hash = rsa.decrypt(decrypted_data["hash"].encode("latin-1"),public_key_server).encode("latin-1")
+
+    print("\nHash: ",hashed,"\n")
+    print("\nReceived Hash: ",received_hash,"\n")
+
+    if hashed == received_hash:
+        print("Certificate Verified")
+        f = open(decrypted_data["name"][:-4]+"recvd.pdf", "wb")
+        f.write(decrypted_data["data"].encode("latin-1"))
+        f.close()
+    else:
+        print("Certificate Not Verified")
+        
 
     client_socket.close()  # close the connection
 

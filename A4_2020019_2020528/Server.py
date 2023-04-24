@@ -4,15 +4,33 @@ import socket
 import json
 import os
 import hashlib
+from PyPDF2 import PdfFileReader, PdfFileWriter
 from datetime import datetime
 from cryptography.fernet import Fernet
 import PKDC
 
 my_private_key = (379241, 204061)
 public_key_server = PKDC.Public_Keys["Server"]
+public_key_server1 = PKDC.Public_Keys["Server1"]
+public_key_server2 = PKDC.Public_Keys["Server2"]
+
 
 shared_keys = {}
 rsa = rsa.RSA()
+
+def add_metadata(filename,signature):
+
+    reader = PdfFileReader(filename) # load the PDF file
+    writer = PdfFileWriter()
+    writer.appendPagesFromReader(reader)
+    metadata = reader.getDocumentInfo()
+    writer.addMetadata(metadata)
+
+# Write your custom metadata here:
+    writer.addMetadata({"/sign": signature}) # replace /Some and Example with your field name and value
+
+    with open(filename, "wb") as f:
+        writer.write(f)
 
 def server_program():
     # get the hostname
@@ -67,6 +85,22 @@ def server_program():
 
     conn.close()  # close the connection
 
+
+
+def send_message_Server(message,port,server_name):
+    host = socket.gethostname()  # as both code is running on same pc
+    client_socket = socket.socket()  # instantiate
+    client_socket.connect((host, port))  # connect to the server
+    client_socket.send(message)  # send message
+    encrypted_data = client_socket.recv(200000) 
+    decrypted_data = rsa.decrypt(encrypted_data,my_private_key)
+    decrypted_data = rsa.decrypt(encrypted_data,PKDC.Public_Keys[server_name])
+    decrypted_data = json.loads(decrypted_data)
+    client_socket.close()  # close the connection
+    return decrypted_data
+    
+
+
 def certificate_authority():
 # get the hostname
     host = socket.gethostname()
@@ -90,6 +124,16 @@ def certificate_authority():
         print("from connected user: " + str(data))
         fernet = Fernet(shared_keys["Client"].encode())
         data = fernet.decrypt(data.encode())
+        encrypted_data = rsa.encrypt(data.decode("latin-1"),my_private_key)
+        encrypted_data1 = rsa.encrypt(encrypted_data.decode("latin-1"),public_key_server1)
+        encrypted_data2 = rsa.encrypt(encrypted_data.decode("latin-1"),public_key_server2)
+        
+        server1 = send_message_Server(encrypted_data1,5004,"Server1")             
+        server2 = send_message_Server(encrypted_data2,5005,"Server2")
+        print("server1",server1)
+        print("server2",server2)
+        
+        
         data = data.decode()
         data = json.loads(data)
         
@@ -98,6 +142,8 @@ def certificate_authority():
         if(time.time()-data["Time"]>data["Lifetime"]):
             print("Ticket Expired!!!!!!!!!!")
             exit()
+        else:
+            print("Ticket Valid!!!!!!!!!!")
 
         print(data)
         filename = data["Name"].replace(" ", "").lower()+"_"+data["Rollno"]+".pdf"
@@ -109,12 +155,17 @@ def certificate_authority():
         #print("\nHash: ",hashed,"\n")
         #print(pdf_data.decode("latin-1"))
         encrypted_hash = rsa.encrypt(hashed.decode("latin-1"),my_private_key)
-        certificate = {"data": pdf_data.decode("latin-1"), "hash": encrypted_hash.decode("latin-1")}
+        certificate = {"name":filename,"data": pdf_data.decode("latin-1"), "hash": encrypted_hash.decode("latin-1")}
        # print("\ncert",certificate)
+        # received_hash = rsa.decrypt(encrypted_hash.decode("latin-1").encode("latin-1"),public_key_server).encode("latin-1")
+        # if(received_hash == hashed):
+        #     print("Hash Verified")
+
         certificate = json.dumps(certificate)
         certificate = fernet.encrypt(certificate.encode())
         print("Size: ",len(certificate))
         conn.send(certificate)  # send data to the client
+        f.close()
 
 
     # break if the file size is reached or no more data is received
