@@ -27,16 +27,16 @@ def certificate_authority():
     print("Connection from: " + str(address))
     while True:
         # receive data stream. it won't accept data packet greater than 1024 bytes
-        data = conn.recv(200000).decode()
+        data = conn.recv(200000)
         if not data:
             # if data is not received break
             break
 
         print("from connected user: " + str(data))
-        data = rsa.decrypt(data.encode("latin-1"),my_private_key)
+        data = rsa.decrypt(data,my_private_key)
         data = rsa.decrypt(data.encode("latin-1"),public_key_server)
         data = json.loads(data)
-        
+        print(data)
         if(time.time()-data["Time"]>data["Lifetime"]):
             print("Ticket Expired!!!!!!!!!!")
             exit()
@@ -54,8 +54,8 @@ def certificate_authority():
         certificate = {"hash": encrypted_hash.decode("latin-1")}
       
         certificate = json.dumps(certificate)
-        certificate = rsa.encrypt(certificate.encode("latin-1"),my_private_key)
-        certificate = rsa.encrypt(certificate.encode("latin-1"),public_key_server)
+        certificate = rsa.encrypt(certificate,my_private_key)
+        certificate = rsa.encrypt(certificate.decode(),public_key_server)
 
         print("Size: ",len(certificate))
         conn.send(certificate)  # send data to the client

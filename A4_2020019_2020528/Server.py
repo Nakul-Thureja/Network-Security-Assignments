@@ -94,8 +94,9 @@ def send_message_Server(message,port,server_name):
     client_socket.send(message)  # send message
     encrypted_data = client_socket.recv(200000) 
     decrypted_data = rsa.decrypt(encrypted_data,my_private_key)
-    decrypted_data = rsa.decrypt(encrypted_data,PKDC.Public_Keys[server_name])
+    decrypted_data = rsa.decrypt(decrypted_data.encode("latin1"),PKDC.Public_Keys[server_name])
     decrypted_data = json.loads(decrypted_data)
+    print("decrypted_data",decrypted_data)
     client_socket.close()  # close the connection
     return decrypted_data
     
@@ -154,8 +155,8 @@ def certificate_authority():
         
         #print("\nHash: ",hashed,"\n")
         #print(pdf_data.decode("latin-1"))
-        encrypted_hash = rsa.encrypt(hashed.decode("latin-1"),my_private_key)
-        certificate = {"name":filename,"data": pdf_data.decode("latin-1"), "hash": encrypted_hash.decode("latin-1")}
+        # encrypted_hash = rsa.encrypt(hashed.decode("latin-1"),my_private_key)
+        certificate = {"name":filename,"data": pdf_data.decode("latin-1"), "hash1": server1["hash"], "hash2": server2["hash"]}
        # print("\ncert",certificate)
         # received_hash = rsa.decrypt(encrypted_hash.decode("latin-1").encode("latin-1"),public_key_server).encode("latin-1")
         # if(received_hash == hashed):

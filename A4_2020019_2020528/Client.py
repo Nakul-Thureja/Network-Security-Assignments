@@ -13,6 +13,8 @@ tickets = {}
 shared_keys = {}
 public_key_as = PKDC.Public_Keys["AS"]
 public_key_server = PKDC.Public_Keys["Server"]
+public_key_server1 = PKDC.Public_Keys["Server1"]
+public_key_server2 = PKDC.Public_Keys["Server2"]
 
 
 def send_message_AS():
@@ -97,12 +99,15 @@ def certificate_request():
     decrypted_data = fernet.decrypt(encrypted_data.encode()).decode()
     decrypted_data = json.loads(decrypted_data)
     hashed = hashlib.sha256(decrypted_data["data"].encode("latin-1")).digest()
-    received_hash = rsa.decrypt(decrypted_data["hash"].encode("latin-1"),public_key_server).encode("latin-1")
+    received_hash1 = rsa.decrypt(decrypted_data["hash1"].encode("latin-1"),public_key_server1).encode("latin-1")
+    received_hash2 = rsa.decrypt(decrypted_data["hash2"].encode("latin-1"),public_key_server2).encode("latin-1")
 
     print("\nHash: ",hashed,"\n")
-    print("\nReceived Hash: ",received_hash,"\n")
+    print("\nReceived Hash: ",received_hash1,"\n")
 
-    if hashed == received_hash:
+    print("\nReceived Hash: ",received_hash2,"\n")
+
+    if hashed == received_hash1 and hashed == received_hash2:
         print("Certificate Verified")
         f = open(decrypted_data["name"][:-4]+"recvd.pdf", "wb")
         f.write(decrypted_data["data"].encode("latin-1"))
