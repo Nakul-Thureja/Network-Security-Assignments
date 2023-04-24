@@ -8,6 +8,7 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 from datetime import datetime
 from cryptography.fernet import Fernet
 import PKDC
+import DATABASE
 
 my_private_key = (379241, 204061)
 public_key_server = PKDC.Public_Keys["Server"]
@@ -137,7 +138,15 @@ def certificate_authority():
         
         data = data.decode()
         data = json.loads(data)
-        
+        # print("DATABASE: ", DATABASE.records[data["Rollno"]]," ",data["dob"])
+        if(DATABASE.records[int(data["Rollno"])] == data["dob"]):
+            print("Verified VIA DOB Database")
+        else:
+            print("Unverified VIA DOB Database")
+            exit(0)
+        # except:
+        #     print("Unverified VIA DOB Database")
+        #     exit(0)
         # ticket = json.loads(ticket)
         
         if(time.time()-data["Time"]>data["Lifetime"]):
@@ -156,7 +165,7 @@ def certificate_authority():
         #print("\nHash: ",hashed,"\n")
         #print(pdf_data.decode("latin-1"))
         # encrypted_hash = rsa.encrypt(hashed.decode("latin-1"),my_private_key)
-        certificate = {"name":filename,"data": pdf_data.decode("latin-1"), "hash1": server1["hash"], "hash2": server2["hash"]}
+        certificate = {"name":filename,"data": pdf_data.decode("latin-1"), "hash1": server1["hash"], "hash2": server2["hash"],"timestamp1": server1["timestamp"], "timestamp2": server2["timestamp"]}
        # print("\ncert",certificate)
         # received_hash = rsa.decrypt(encrypted_hash.decode("latin-1").encode("latin-1"),public_key_server).encode("latin-1")
         # if(received_hash == hashed):

@@ -6,6 +6,7 @@ import hashlib
 from datetime import datetime
 from cryptography.fernet import Fernet
 import PKDC
+from PyPDF2 import PdfReader, PdfWriter
 
 my_private_key = (222637, 50373)
 rsa = rsa.RSA()
@@ -16,6 +17,23 @@ public_key_server = PKDC.Public_Keys["Server"]
 public_key_server1 = PKDC.Public_Keys["Server1"]
 public_key_server2 = PKDC.Public_Keys["Server2"]
 
+def add_metadata(filename,signature1,signature2,time1,time2):
+    reader = PdfReader(filename) # load the PDF file
+    writer = PdfWriter()
+    writer.append_pages_from_reader(reader)
+    my_metadata = reader.metadata
+    writer.add_metadata(my_metadata)
+
+# Write your custom metadata here:
+    writer.add_metadata({"/sign1": signature1})
+    writer.add_metadata({"/sign2": signature2})
+    writer.add_metadata({"/timestamp1": time1})
+    writer.add_metadata({"/timestamp2": time2})
+    
+     # replace /Some and Example with your field name and value
+
+    with open("meta_"+filename, "wb") as f:
+        writer.write(f)
 
 def send_message_AS():
     message = {"ID1": "Client","ID2": "TGS","Time":time.time()}
@@ -83,7 +101,9 @@ def certificate_request():
     fernet = Fernet(key_c_server.encode())
     name = str(input("Enter your name: "))
     roll_no = str(input("Enter your roll number: "))
-    message = {"Name": name,"Rollno":roll_no,"Time":time.time(), "Lifetime":5}
+    dob = str(input("Enter your dob(dd/mm/yyyy): "))
+    
+    message = {"Name": name,"Rollno":roll_no,"Time":time.time(), "Lifetime":5,"dob":dob}
     encMessage = fernet.encrypt(json.dumps(message).encode())
 
     host = socket.gethostname()  # as both code is running on same pc
@@ -98,20 +118,26 @@ def certificate_request():
     
     decrypted_data = fernet.decrypt(encrypted_data.encode()).decode()
     decrypted_data = json.loads(decrypted_data)
-    hashed = hashlib.sha256(decrypted_data["data"].encode("latin-1")).digest()
+    hashed1 = hashlib.sha256(decrypted_data["data"].encode("latin-1") + decrypted_data["timestamp1"].encode("latin-1")).digest()
+    hashed2 = hashlib.sha256(decrypted_data["data"].encode("latin-1") + decrypted_data["timestamp2"].encode("latin-1")).digest()
+
     received_hash1 = rsa.decrypt(decrypted_data["hash1"].encode("latin-1"),public_key_server1).encode("latin-1")
     received_hash2 = rsa.decrypt(decrypted_data["hash2"].encode("latin-1"),public_key_server2).encode("latin-1")
 
-    print("\nHash: ",hashed,"\n")
-    print("\nReceived Hash: ",received_hash1,"\n")
+    print("\nHash: ",hashed1,"\n")
+    print("\nHash: ",hashed2,"\n")
 
+    print("\nReceived Hash: ",received_hash1,"\n")
     print("\nReceived Hash: ",received_hash2,"\n")
 
-    if hashed == received_hash1 and hashed == received_hash2:
+    if hashed1 == received_hash1 and hashed2 == received_hash2:
         print("Certificate Verified")
-        f = open(decrypted_data["name"][:-4]+"recvd.pdf", "wb")
+        filename = decrypted_data["name"][:-4]+"recvd.pdf"
+        f = open(filename, "wb")
         f.write(decrypted_data["data"].encode("latin-1"))
         f.close()
+        add_metadata(filename,received_hash1,received_hash2,decrypted_data["timestamp1"],decrypted_data["timestamp2"])
+   
     else:
         print("Certificate Not Verified")
         

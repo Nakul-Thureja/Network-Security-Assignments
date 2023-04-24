@@ -45,13 +45,14 @@ def certificate_authority():
         filename = data["Name"].replace(" ", "").lower()+"_"+data["Rollno"]+".pdf"
         f = open(filename, "rb")
         size = os.path.getsize(filename)
-        pdf_data = f.read(size)
+        timestamp = str(datetime.now()).encode("latin-1")
+        pdf_data = f.read(size) + timestamp
         hashed  = hashlib.sha256(pdf_data).digest()
         
         #print("\nHash: ",hashed,"\n")
         #print(pdf_data.decode("latin-1"))
         encrypted_hash = rsa.encrypt(hashed.decode("latin-1"),my_private_key)
-        certificate = {"hash": encrypted_hash.decode("latin-1")}
+        certificate = {"hash": encrypted_hash.decode("latin-1"),"timestamp": timestamp.decode("latin-1")}
       
         certificate = json.dumps(certificate)
         certificate = rsa.encrypt(certificate,my_private_key)

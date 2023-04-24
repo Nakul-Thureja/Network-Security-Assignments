@@ -101,3 +101,14 @@ class RSA:
         plain = [chr(pow(char, d, n)) for char in cipher]
         plain = ''.join(plain)
         return plain
+
+# randomly generate public private key pairs
+if __name__ == '__main__':
+    rsa = RSA()
+    print(rsa.work())
+    print(rsa.work())
+    print(rsa.work())
+    print(rsa.work())
+    print(rsa.work())
+    print(rsa.work())
+    
